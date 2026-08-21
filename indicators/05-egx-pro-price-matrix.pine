@@ -1,0 +1,120 @@
+//@version=6
+indicator("EGX Pro Price Matrix v1.0", overlay=true, max_labels_count=100, max_lines_count=100)
+
+//====================================================
+// EGX Pro Price Matrix v1.0
+// Status: Beta
+// Purpose: Daily pivot price matrix with trend, liquidity, and dashboard context.
+//====================================================
+
+//====================
+// SETTINGS
+//====================
+groupLevels = "Price Matrix Levels"
+groupTrend = "Trend & Liquidity"
+groupVisual = "Visual Settings"
+
+showLabels = input.bool(true, "Show Right-Side Labels", group=groupLevels)
+offset = input.int(10, "Right Label Offset", minval=1, group=groupLevels)
+emaFastLen = input.int(50, "Liquidity EMA", minval=1, group=groupTrend)
+emaSlowLen = input.int(200, "Main Trend EMA", minval=1, group=groupTrend)
+volumeLen = input.int(20, "Volume MA Length", minval=1, group=groupTrend)
+showDashboard = input.bool(true, "Show Dashboard", group=groupVisual)
+showSignals = input.bool(true, "Show Liquidity Signals", group=groupVisual)
+
+//====================
+// DAILY PIVOT MATRIX
+//====================
+pHigh = request.security(syminfo.tickerid, "D", high[1], barmerge.gaps_off, barmerge.lookahead_off)
+pLow = request.security(syminfo.tickerid, "D", low[1], barmerge.gaps_off, barmerge.lookahead_off)
+pClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_off)
+
+hasDailyData = not na(pHigh) and not na(pLow) and not na(pClose)
+pivot = hasDailyData ? (pHigh + pLow + pClose) / 3.0 : na
+r1 = hasDailyData ? 2.0 * pivot - pLow : na
+r2 = hasDailyData ? pivot + (pHigh - pLow) : na
+r3 = hasDailyData ? pHigh + 2.0 * (pivot - pLow) : na
+s1 = hasDailyData ? 2.0 * pivot - pHigh : na
+s2 = hasDailyData ? pivot - (pHigh - pLow) : na
+s3 = hasDailyData ? pLow - 2.0 * (pHigh - pivot) : na
+
+rangeVal = hasDailyData ? pHigh - pLow : na
+goldTarget1 = hasDailyData ? r1 + rangeVal * 0.382 : na
+goldTarget2 = hasDailyData ? s1 - rangeVal * 0.382 : na
+transformationLine = hasDailyData ? (r1 + pivot) / 2.0 : na
+
+//====================
+// TREND & LIQUIDITY
+//====================
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+volMA = ta.sma(volume, volumeLen)
+highVolume = not na(volMA) and volume > volMA
+
+plot(emaFast, color=color.new(color.aqua, 0), title="Liquidity EMA")
+plot(emaSlow, color=color.new(color.purple, 0), title="Main Trend EMA", linewidth=2)
+
+buySignal = not na(pivot) and ta.crossover(close, pivot) and close > emaFast
+sellSignal = not na(pivot) and ta.crossunder(close, pivot) and close < emaFast
+
+plotshape(showSignals and buySignal, title="Liquidity Entry", style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small, text="IN")
+plotshape(showSignals and sellSignal, title="Liquidity Exit", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, text="OUT")
+
+//====================
+// LABEL MANAGEMENT
+//====================
+var label r3Label = na
+var label r2Label = na
+var label gt1Label = na
+var label r1Label = na
+var label transformLabel = na
+var label pivotLabel = na
+var label s1Label = na
+var label gt2Label = na
+var label s2Label = na
+var label s3Label = na
+
+updateLabel(label existing, float price, string txt, color bg, color fg) =>
+    label result = existing
+    if showLabels and barstate.islast and not na(price)
+        if na(result)
+            result := label.new(bar_index + offset, price, txt + ": " + str.tostring(price, "#.##"), color=bg, textcolor=fg, style=label.style_label_left, size=size.small)
+        else
+            label.set_xy(result, bar_index + offset, price)
+            label.set_text(result, txt + ": " + str.tostring(price, "#.##"))
+            label.set_color(result, bg)
+            label.set_textcolor(result, fg)
+    result
+
+r3Label := updateLabel(r3Label, r3, "Target 3", color.rgb(255, 82, 82), color.white)
+r2Label := updateLabel(r2Label, r2, "Bull Target", color.rgb(255, 50, 50), color.white)
+gt1Label := updateLabel(gt1Label, goldTarget1, "Golden Target 1", color.rgb(255, 215, 0), color.black)
+r1Label := updateLabel(r1Label, r1, "Resistance 1", color.rgb(200, 0, 0), color.white)
+transformLabel := updateLabel(transformLabel, transformationLine, "Transformation", color.orange, color.black)
+pivotLabel := updateLabel(pivotLabel, pivot, "Pivot", color.rgb(41, 98, 255), color.white)
+s1Label := updateLabel(s1Label, s1, "Support 1", color.rgb(0, 150, 136), color.white)
+gt2Label := updateLabel(gt2Label, goldTarget2, "Golden Target 2", color.rgb(139, 195, 74), color.black)
+s2Label := updateLabel(s2Label, s2, "Stop / Safety", color.rgb(56, 142, 60), color.white)
+s3Label := updateLabel(s3Label, s3, "Reversal Level", color.rgb(27, 94, 32), color.white)
+
+//====================
+// DASHBOARD
+//====================
+var table summary = table.new(position.top_right, 2, 4, border_width=1)
+
+if showDashboard and barstate.islast
+    table.clear(summary, 0, 0)
+    table.cell(summary, 0, 0, "EGX Price Matrix", bgcolor=color.black, text_color=color.white)
+    table.cell(summary, 1, 0, syminfo.ticker, bgcolor=color.black, text_color=color.yellow)
+    table.cell(summary, 0, 1, "Market State", bgcolor=color.black, text_color=color.white)
+    table.cell(summary, 1, 1, close > pivot ? "Positive" : "Negative", bgcolor=close > pivot ? color.green : color.red, text_color=color.white)
+    table.cell(summary, 0, 2, "Liquidity", bgcolor=color.black, text_color=color.white)
+    table.cell(summary, 1, 2, highVolume ? "High" : "Calm", bgcolor=highVolume ? color.orange : color.gray, text_color=color.white)
+    table.cell(summary, 0, 3, "Trend", bgcolor=color.black, text_color=color.white)
+    table.cell(summary, 1, 3, emaFast > emaSlow ? "Bullish" : "Bearish", bgcolor=emaFast > emaSlow ? color.green : color.red, text_color=color.white)
+
+//====================
+// ALERTS
+//====================
+alertcondition(buySignal, title="EGX Price Matrix Entry", message="EGX Pro Price Matrix: liquidity entry signal on {{ticker}}.")
+alertcondition(sellSignal, title="EGX Price Matrix Exit", message="EGX Pro Price Matrix: liquidity exit signal on {{ticker}}.")
