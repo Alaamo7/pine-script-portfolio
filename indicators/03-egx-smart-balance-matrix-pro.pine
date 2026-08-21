@@ -1,0 +1,176 @@
+//@version=6
+indicator("EGX Smart Balance Matrix Pro v1.0", overlay=true, max_lines_count=100, max_labels_count=100)
+
+//====================================================
+// EGX Smart Balance Matrix Pro v1.0
+// Status: Active Beta
+// Purpose: Combined EGX balance dashboard using trend, momentum, liquidity, pivots, and SMC-lite scoring.
+//====================================================
+
+//====================
+// SETTINGS
+//====================
+groupTrend = "Trend & Momentum"
+groupLiq   = "Liquidity & Volume"
+groupSMC   = "SMC Lite"
+groupDash  = "Dashboard"
+groupVis   = "Visuals"
+
+emaFastLen = input.int(50, "Fast EMA", minval=1, group=groupTrend)
+emaSlowLen = input.int(200, "Slow EMA", minval=1, group=groupTrend)
+rsiLen     = input.int(14, "RSI Length", minval=1, group=groupTrend)
+macdFast   = input.int(12, "MACD Fast", minval=1, group=groupTrend)
+macdSlow   = input.int(26, "MACD Slow", minval=1, group=groupTrend)
+macdSignal = input.int(9, "MACD Signal", minval=1, group=groupTrend)
+
+volMaLen = input.int(20, "Volume MA Length", minval=1, group=groupLiq)
+volMult  = input.float(1.5, "Volume Spike Multiplier", minval=0.1, step=0.1, group=groupLiq)
+
+pivotLen = input.int(5, "Pivot Length", minval=2, group=groupSMC)
+wickBodyMult = input.float(1.5, "Sweep Wick/Body Multiplier", minval=0.1, step=0.1, group=groupSMC)
+
+showDash = input.bool(true, "Show Dashboard", group=groupDash)
+dashPosOpt = input.string("Middle Right", "Dashboard Position", options=["Top Right", "Middle Right", "Bottom Right"], group=groupDash)
+showSignals = input.bool(true, "Show Signals", group=groupVis)
+showMAs = input.bool(true, "Show Moving Averages", group=groupVis)
+
+//====================
+// TREND ENGINE
+//====================
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+
+isBullTrend = close > emaFast and emaFast > emaSlow
+isBearTrend = close < emaFast and emaFast < emaSlow
+
+plot(showMAs ? emaFast : na, color=color.new(color.aqua, 0), title="EMA Fast", linewidth=2)
+plot(showMAs ? emaSlow : na, color=color.new(color.purple, 0), title="EMA Slow", linewidth=2)
+
+//====================
+// MOMENTUM
+//====================
+rsiVal = ta.rsi(close, rsiLen)
+[macdLine, signalLine, _] = ta.macd(close, macdFast, macdSlow, macdSignal)
+
+isMomBull = rsiVal > 50 and macdLine > signalLine
+isMomBear = rsiVal < 50 and macdLine < signalLine
+
+//====================
+// VOLUME & LIQUIDITY
+//====================
+volMa = ta.sma(volume, volMaLen)
+isVolSpike = not na(volMa) and volume > volMa * volMult
+
+liqState = isVolSpike and close > open ? "Inflows" : isVolSpike and close < open ? "Outflows" : "Normal"
+liqColor = isVolSpike and close > open ? color.lime : isVolSpike and close < open ? color.red : color.gray
+
+//====================
+// SMC LITE
+//====================
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low, pivotLen, pivotLen)
+
+var float lastSwingHigh = na
+var float lastSwingLow = na
+
+if not na(ph)
+    lastSwingHigh := ph
+if not na(pl)
+    lastSwingLow := pl
+
+isBOSUp = not na(lastSwingHigh) and ta.crossover(close, lastSwingHigh)
+isBOSDn = not na(lastSwingLow) and ta.crossunder(close, lastSwingLow)
+
+wickUpper = high - math.max(close, open)
+wickLower = math.min(close, open) - low
+body = math.max(math.abs(close - open), syminfo.mintick)
+
+isSweepHigh = not na(lastSwingHigh) and high > lastSwingHigh and close < lastSwingHigh and wickUpper > body * wickBodyMult and isVolSpike
+isSweepLow = not na(lastSwingLow) and low < lastSwingLow and close > lastSwingLow and wickLower > body * wickBodyMult and isVolSpike
+
+//====================
+// SCORE SYSTEM
+//====================
+score = 0
+score += isBullTrend ? 2 : isBearTrend ? -2 : 0
+score += isMomBull ? 1 : isMomBear ? -1 : 0
+score += isVolSpike and close > open ? 1 : isVolSpike and close < open ? -1 : 0
+score += isSweepLow ? 2 : isSweepHigh ? -2 : 0
+score += isBOSUp ? 1 : isBOSDn ? -1 : 0
+
+decision = score >= 4 ? "Strong Buy" : score >= 2 ? "Accumulation / Bullish" : score <= -4 ? "Strong Sell" : score <= -2 ? "Distribution / Bearish" : "Neutral / Wait"
+decColor = score >= 4 ? color.lime : score >= 2 ? color.green : score <= -4 ? color.red : score <= -2 ? color.maroon : color.orange
+
+buySignal = ta.crossover(score, 3)
+sellSignal = ta.crossunder(score, -3)
+
+//====================
+// VISUALS
+//====================
+plotshape(showSignals and buySignal, title="Buy", location=location.belowbar, color=color.lime, style=shape.triangleup, size=size.small, text="BUY")
+plotshape(showSignals and sellSignal, title="Sell", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.small, text="SELL")
+plotshape(showSignals and isSweepLow, title="Sweep Low", location=location.belowbar, color=color.orange, style=shape.circle, size=size.tiny, text="SW")
+plotshape(showSignals and isSweepHigh, title="Sweep High", location=location.abovebar, color=color.orange, style=shape.circle, size=size.tiny, text="SW")
+
+//====================
+// BALANCE PIVOT LEVELS
+//====================
+pivot = (high[1] + low[1] + close[1]) / 3.0
+r1 = 2.0 * pivot - low[1]
+s1 = 2.0 * pivot - high[1]
+r2 = pivot + (high[1] - low[1])
+s2 = pivot - (high[1] - low[1])
+
+//====================
+// DASHBOARD
+//====================
+getDashPos(pos) =>
+    pos == "Top Right" ? position.top_right : pos == "Bottom Right" ? position.bottom_right : position.middle_right
+
+var table dash = table.new(getDashPos(dashPosOpt), 2, 11, border_width=1, frame_color=color.rgb(43, 43, 43), border_color=color.rgb(43, 43, 43))
+
+if showDash and barstate.islast
+    table.clear(dash, 0, 0)
+    table.cell(dash, 0, 0, "EGX Balance Matrix", text_color=color.white, bgcolor=color.rgb(20, 20, 20), text_size=size.small)
+    table.cell(dash, 1, 0, syminfo.ticker, text_color=color.yellow, bgcolor=color.rgb(20, 20, 20), text_size=size.small)
+
+    table.cell(dash, 0, 1, "Target 2", text_color=color.white, bgcolor=color.rgb(150, 0, 0), text_size=size.small)
+    table.cell(dash, 1, 1, str.tostring(r2, "#.##"), text_color=color.white, bgcolor=color.rgb(150, 0, 0), text_size=size.small)
+
+    table.cell(dash, 0, 2, "Resistance 1", text_color=color.white, bgcolor=color.rgb(180, 50, 50), text_size=size.small)
+    table.cell(dash, 1, 2, str.tostring(r1, "#.##"), text_color=color.white, bgcolor=color.rgb(180, 50, 50), text_size=size.small)
+
+    pivotBg = close > pivot ? color.rgb(0, 100, 0) : color.rgb(100, 0, 0)
+    table.cell(dash, 0, 3, "Pivot", text_color=color.white, bgcolor=color.rgb(200, 120, 0), text_size=size.small)
+    table.cell(dash, 1, 3, str.tostring(pivot, "#.##"), text_color=color.white, bgcolor=pivotBg, text_size=size.small)
+
+    table.cell(dash, 0, 4, "Support 1", text_color=color.black, bgcolor=color.rgb(0, 180, 0), text_size=size.small)
+    table.cell(dash, 1, 4, str.tostring(s1, "#.##"), text_color=color.black, bgcolor=color.rgb(0, 180, 0), text_size=size.small)
+
+    table.cell(dash, 0, 5, "Stop Area", text_color=color.white, bgcolor=color.rgb(0, 100, 0), text_size=size.small)
+    table.cell(dash, 1, 5, str.tostring(s2, "#.##"), text_color=color.white, bgcolor=color.rgb(0, 100, 0), text_size=size.small)
+
+    table.cell(dash, 0, 6, "Liquidity", text_color=color.white, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+    table.cell(dash, 1, 6, liqState, text_color=liqColor, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+
+    table.cell(dash, 0, 7, "Momentum", text_color=color.white, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+    table.cell(dash, 1, 7, isMomBull ? "Bullish" : isMomBear ? "Bearish" : "Mixed", text_color=isMomBull ? color.lime : isMomBear ? color.red : color.orange, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+
+    table.cell(dash, 0, 8, "Structure", text_color=color.white, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+    table.cell(dash, 1, 8, isBOSUp ? "BOS Up" : isBOSDn ? "BOS Down" : isSweepLow ? "Sweep Low" : isSweepHigh ? "Sweep High" : "Neutral", text_color=color.white, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+
+    table.cell(dash, 0, 9, "Score", text_color=color.white, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+    table.cell(dash, 1, 9, str.tostring(score), text_color=decColor, bgcolor=color.rgb(30, 30, 40), text_size=size.small)
+
+    table.cell(dash, 0, 10, "Decision", text_color=color.black, bgcolor=decColor, text_size=size.small)
+    table.cell(dash, 1, 10, decision, text_color=color.black, bgcolor=decColor, text_size=size.small)
+
+//====================
+// ALERTS
+//====================
+alertcondition(buySignal, title="EGX Balance Buy", message="EGX Smart Balance Matrix Pro: buy score signal on {{ticker}}.")
+alertcondition(sellSignal, title="EGX Balance Sell", message="EGX Smart Balance Matrix Pro: sell score signal on {{ticker}}.")
+alertcondition(isSweepLow, title="EGX Balance Sweep Low", message="EGX Smart Balance Matrix Pro: sweep low with volume on {{ticker}}.")
+alertcondition(isSweepHigh, title="EGX Balance Sweep High", message="EGX Smart Balance Matrix Pro: sweep high with volume on {{ticker}}.")
+alertcondition(isBOSUp, title="EGX Balance BOS Up", message="EGX Smart Balance Matrix Pro: BOS Up on {{ticker}}.")
+alertcondition(isBOSDn, title="EGX Balance BOS Down", message="EGX Smart Balance Matrix Pro: BOS Down on {{ticker}}.")

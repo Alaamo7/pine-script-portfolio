@@ -1,0 +1,141 @@
+//@version=6
+indicator("Smart Correction Signals Pro v1.0", overlay=true, max_labels_count=100)
+
+//====================================================
+// Smart Correction Signals Pro v1.0
+// Status: Beta
+// Purpose: Detect correction zones using EMA, RSI, MACD, Bollinger Bands, pivots, and Fibonacci levels.
+//====================================================
+
+//=========================
+// SETTINGS
+//=========================
+groupVis   = "Visual Settings"
+groupCore  = "Core Settings"
+groupFib   = "Fibonacci Settings"
+groupAlert = "Alerts"
+
+showEMA       = input.bool(true, "Show EMA 20 & EMA 50", group=groupVis)
+showRSI       = input.bool(true, "Show RSI Signals", group=groupVis)
+showMACD      = input.bool(true, "Show MACD Crosses", group=groupVis)
+showBollinger = input.bool(true, "Show Bollinger Bands", group=groupVis)
+showSwings    = input.bool(true, "Show Confirmed Swings", group=groupVis)
+showFib       = input.bool(true, "Show Fibonacci Levels", group=groupFib)
+
+emaFastLen = input.int(20, "EMA Fast Length", minval=1, group=groupCore)
+emaSlowLen = input.int(50, "EMA Slow Length", minval=1, group=groupCore)
+rsiLen     = input.int(14, "RSI Length", minval=1, group=groupCore)
+rsiOB      = input.float(70.0, "RSI Overbought", minval=50.0, maxval=100.0, step=0.5, group=groupCore)
+rsiOS      = input.float(30.0, "RSI Oversold", minval=0.0, maxval=50.0, step=0.5, group=groupCore)
+
+macdFast   = input.int(12, "MACD Fast Length", minval=1, group=groupCore)
+macdSlow   = input.int(26, "MACD Slow Length", minval=1, group=groupCore)
+macdSignal = input.int(9, "MACD Signal Smoothing", minval=1, group=groupCore)
+
+bollLen  = input.int(20, "Bollinger Length", minval=1, group=groupCore)
+bollMult = input.float(2.0, "Bollinger Multiplier", minval=0.1, step=0.1, group=groupCore)
+
+pivotLeft  = input.int(5, "Pivot Left Bars", minval=1, group=groupCore)
+pivotRight = input.int(5, "Pivot Right Bars", minval=1, group=groupCore)
+
+alertOnCorrectionBuy  = input.bool(true, "Enable Correction Buy Alert", group=groupAlert)
+alertOnCorrectionSell = input.bool(true, "Enable Correction Sell Alert", group=groupAlert)
+
+//=========================
+// EMA TREND FILTER
+//=========================
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+trendBull = emaFast > emaSlow
+trendBear = emaFast < emaSlow
+
+plot(showEMA ? emaFast : na, "EMA Fast", color=color.blue)
+plot(showEMA ? emaSlow : na, "EMA Slow", color=color.red)
+
+//=========================
+// RSI
+//=========================
+rsi = ta.rsi(close, rsiLen)
+rsiOverbought = rsi > rsiOB
+rsiOversold   = rsi < rsiOS
+
+plotshape(showRSI and rsiOverbought, title="RSI Overbought", location=location.abovebar, color=color.red, style=shape.triangledown, size=size.tiny, text="RSI OB")
+plotshape(showRSI and rsiOversold, title="RSI Oversold", location=location.belowbar, color=color.green, style=shape.triangleup, size=size.tiny, text="RSI OS")
+
+//=========================
+// MACD
+//=========================
+[macdLine, signalLine, _] = ta.macd(close, macdFast, macdSlow, macdSignal)
+macdCrossUp = ta.crossover(macdLine, signalLine)
+macdCrossDown = ta.crossunder(macdLine, signalLine)
+
+plotshape(showMACD and macdCrossUp, title="MACD Bullish Cross", location=location.belowbar, color=color.lime, style=shape.labelup, size=size.tiny, text="MACD+")
+plotshape(showMACD and macdCrossDown, title="MACD Bearish Cross", location=location.abovebar, color=color.fuchsia, style=shape.labeldown, size=size.tiny, text="MACD-")
+
+//=========================
+// BOLLINGER BANDS
+//=========================
+basis = ta.sma(close, bollLen)
+dev = bollMult * ta.stdev(close, bollLen)
+upper = basis + dev
+lower = basis - dev
+
+basisPlot = plot(showBollinger ? basis : na, title="Bollinger Basis", color=color.gray)
+upperPlot = plot(showBollinger ? upper : na, title="Bollinger Upper", color=color.orange)
+lowerPlot = plot(showBollinger ? lower : na, title="Bollinger Lower", color=color.orange)
+fill(upperPlot, lowerPlot, color=showBollinger ? color.new(color.orange, 88) : na)
+
+//=========================
+// CONFIRMED SWINGS
+// Uses confirmed pivots to reduce noisy swing signals.
+//=========================
+pivotHigh = ta.pivothigh(high, pivotLeft, pivotRight)
+pivotLow  = ta.pivotlow(low, pivotLeft, pivotRight)
+
+var float lastHigh = na
+var float lastLow  = na
+
+if not na(pivotHigh)
+    lastHigh := pivotHigh
+
+if not na(pivotLow)
+    lastLow := pivotLow
+
+plotshape(showSwings and not na(pivotHigh), title="Confirmed Swing High", location=location.abovebar, offset=-pivotRight, color=color.fuchsia, style=shape.arrowdown, size=size.tiny, text="SH")
+plotshape(showSwings and not na(pivotLow), title="Confirmed Swing Low", location=location.belowbar, offset=-pivotRight, color=color.lime, style=shape.arrowup, size=size.tiny, text="SL")
+
+//=========================
+// FIBONACCI LEVELS
+//=========================
+hasSwingRange = not na(lastHigh) and not na(lastLow) and lastHigh != lastLow
+swingRange = hasSwingRange ? lastHigh - lastLow : na
+
+fib38 = hasSwingRange ? lastHigh - swingRange * 0.382 : na
+fib50 = hasSwingRange ? lastHigh - swingRange * 0.500 : na
+fib61 = hasSwingRange ? lastHigh - swingRange * 0.618 : na
+
+plot(showFib ? lastHigh : na, color=color.red, style=plot.style_circles, title="Last Confirmed High")
+plot(showFib ? lastLow : na, color=color.green, style=plot.style_circles, title="Last Confirmed Low")
+plot(showFib ? fib38 : na, color=color.yellow, style=plot.style_linebr, title="Fib 38.2%")
+plot(showFib ? fib50 : na, color=color.teal, style=plot.style_linebr, title="Fib 50%")
+plot(showFib ? fib61 : na, color=color.blue, style=plot.style_linebr, title="Fib 61.8%")
+
+//=========================
+// CORRECTION SIGNALS
+//=========================
+inFibBuyZone = hasSwingRange and close <= fib50 and close >= fib61
+inFibSellZone = hasSwingRange and close >= fib50 and close <= fib38
+
+correctionBuy = trendBull and inFibBuyZone and (rsiOversold or macdCrossUp or close <= lower)
+correctionSell = trendBear and inFibSellZone and (rsiOverbought or macdCrossDown or close >= upper)
+
+plotshape(correctionBuy, title="Correction Buy Setup", location=location.belowbar, color=color.new(color.green, 0), style=shape.labelup, size=size.small, text="CORR\nBUY", textcolor=color.white)
+plotshape(correctionSell, title="Correction Sell Setup", location=location.abovebar, color=color.new(color.red, 0), style=shape.labeldown, size=size.small, text="CORR\nSELL", textcolor=color.white)
+
+//=========================
+// ALERTS
+//=========================
+alertcondition(alertOnCorrectionBuy and correctionBuy, title="Smart Correction Buy Setup", message="Smart Correction Signals Pro: correction buy setup detected.")
+alertcondition(alertOnCorrectionSell and correctionSell, title="Smart Correction Sell Setup", message="Smart Correction Signals Pro: correction sell setup detected.")
+alertcondition(macdCrossUp, title="MACD Bullish Cross", message="Smart Correction Signals Pro: MACD bullish cross detected.")
+alertcondition(macdCrossDown, title="MACD Bearish Cross", message="Smart Correction Signals Pro: MACD bearish cross detected.")

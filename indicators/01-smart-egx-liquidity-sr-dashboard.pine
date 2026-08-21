@@ -1,0 +1,332 @@
+//@version=6
+//=============================================================================
+// Smart EGX Liquidity SR Dashboard
+// Author: Alaamo7
+// Version: v0.9
+// Status: Beta
+// Category: Smart Money / Structure / Liquidity
+//
+// Default Settings:
+// - Show Supply / Demand Zones: true
+// - Show Break Labels: true
+// - Show Liquidity Dots: true
+// - Show Dashboard: true
+// - Mobile Mode: true
+// - Zone Extend Bars: 120
+// - Max Active Zones: 4
+// - Pivot Length: 4
+// - Zone Thickness ATR Mult: 0.35
+// - Min Distance Between Zones %: 0.35
+// - Show EGX EMA Pack: false
+// - RSI Length: 14
+// - Volume MA Length: 20
+// - Volume Spike Mult: 1.8
+// - Show BOS / CHOCH: true
+// - Liquidity Lookback: 8
+// - Min Wick/Body Ratio: 1.2
+//
+// Notes:
+// - This is the repository-managed beta version.
+// - Logic is preserved from the submitted working script.
+// - Cleanup here is limited to repository header normalization only.
+//=============================================================================
+indicator("Smart EGX Liquidity S/R Dashboard", overlay=true, max_boxes_count=50, max_labels_count=100)
+
+//====================================================
+// 1) Core Settings
+//====================================================
+groupCore = "Core Settings"
+showZones       = input.bool(true,  "Show Supply / Demand Zones", group=groupCore)
+showBreaks      = input.bool(true,  "Show Break Labels", group=groupCore)
+showLiquidity   = input.bool(true,  "Show Liquidity Dots", group=groupCore)
+showDashboard   = input.bool(true,  "Show Dashboard", group=groupCore)
+mobileMode      = input.bool(true,  "Mobile Mode", group=groupCore)
+extendBars      = input.int(120,    "Zone Extend Bars", minval=20, maxval=300, group=groupCore)
+maxActiveZones  = input.int(4,      "Max Active Zones", minval=2, maxval=8, group=groupCore)
+
+//====================================================
+// 2) Profile / User Type
+//====================================================
+groupProfile = "Profile / User Type"
+pivotLen         = input.int(4, "Pivot Length", minval=2, maxval=10, group=groupProfile)
+zoneATRMult      = input.float(0.35, "Zone Thickness ATR Mult", minval=0.1, maxval=2.0, step=0.05, group=groupProfile)
+minZoneDistance  = input.float(0.35, "Min Distance Between Zones %", minval=0.1, maxval=3.0, step=0.05, group=groupProfile)
+
+//====================================================
+// 3) EGX Pack
+//====================================================
+groupEGX = "EGX Pack"
+showEGXPack = input.bool(false, "Show EGX EMA Pack", group=groupEGX)
+ema13  = ta.ema(close, 13)
+ema30  = ta.ema(close, 30)
+ema72  = ta.ema(close, 72)
+ema144 = ta.ema(close, 144)
+ema288 = ta.ema(close, 288)
+vwapVal = ta.vwap(hlc3)
+
+plot(showEGXPack ? ema13  : na, "EMA 13",  color=color.orange, linewidth=2)
+plot(showEGXPack ? ema30  : na, "EMA 30",  color=color.blue, linewidth=2)
+plot(showEGXPack ? ema72  : na, "EMA 72",  color=color.aqua, linewidth=1)
+plot(showEGXPack ? ema144 : na, "EMA 144", color=color.fuchsia, linewidth=1)
+plot(showEGXPack ? ema288 : na, "EMA 288", color=color.gray, linewidth=2)
+plot(showEGXPack ? vwapVal : na, "VWAP", color=color.yellow, linewidth=2)
+
+//====================================================
+// 4) Momentum / Volume
+//====================================================
+groupMV = "Momentum / Volume"
+rsiLen          = input.int(14, "RSI Length", group=groupMV)
+volLen          = input.int(20, "Volume MA Length", group=groupMV)
+volSpikeMult    = input.float(1.8, "Volume Spike Mult", minval=1.0, step=0.1, group=groupMV)
+[diplus, diminus, adx] = ta.dmi(14, 14)
+rsi = ta.rsi(close, rsiLen)
+volMA = ta.sma(volume, volLen)
+volSpike = volume > volMA * volSpikeMult
+
+//====================================================
+// 5) Structure / SMC Lite
+//====================================================
+groupStruct = "Structure / SMC Lite"
+showStructure = input.bool(true, "Show BOS / CHOCH", group=groupStruct)
+
+ph = ta.pivothigh(high, pivotLen, pivotLen)
+pl = ta.pivotlow(low, pivotLen, pivotLen)
+
+var float lastPivotHigh = na
+var float lastPivotLow  = na
+var int   lastPivotHighBar = na
+var int   lastPivotLowBar  = na
+
+if not na(ph)
+    lastPivotHigh := ph
+    lastPivotHighBar := bar_index - pivotLen
+
+if not na(pl)
+    lastPivotLow := pl
+    lastPivotLowBar := bar_index - pivotLen
+
+bosUp = showStructure and not na(lastPivotHigh) and ta.crossover(close, lastPivotHigh)
+bosDn = showStructure and not na(lastPivotLow)  and ta.crossunder(close, lastPivotLow)
+
+var int structureBias = 0
+chochUp = bosUp and structureBias == -1
+chochDn = bosDn and structureBias == 1
+
+if bosUp
+    structureBias := 1
+if bosDn
+    structureBias := -1
+
+plotshape(bosUp, title="BOS Up", style=shape.circle, location=location.belowbar, color=color.new(color.lime, 0), size=size.tiny, text="")
+plotshape(bosDn, title="BOS Down", style=shape.circle, location=location.abovebar, color=color.new(color.red, 0), size=size.tiny, text="")
+
+if showBreaks and bosUp
+    label.new(bar_index, close, chochUp ? "CHOCH" : "Break", style=label.style_label_up, textcolor=color.white, color=chochUp ? color.fuchsia : color.new(color.green, 20), size=size.tiny)
+
+if showBreaks and bosDn
+    label.new(bar_index, close, chochDn ? "CHOCH" : "Break", style=label.style_label_down, textcolor=color.white, color=chochDn ? color.fuchsia : color.new(color.red, 20), size=size.tiny)
+
+//====================================================
+// 6) Liquidity / Traps
+//====================================================
+groupLiq = "Liquidity / Traps"
+liqLookback   = input.int(8, "Liquidity Lookback", minval=2, maxval=30, group=groupLiq)
+wickRatioMin  = input.float(1.2, "Min Wick/Body Ratio", minval=0.3, maxval=5.0, step=0.1, group=groupLiq)
+
+body = math.abs(close - open)
+upperWick = high - math.max(open, close)
+lowerWick = math.min(open, close) - low
+
+sweepHigh = showLiquidity and high > ta.highest(high[1], liqLookback) and close < ta.highest(high[1], liqLookback) and body > 0 and upperWick / body >= wickRatioMin
+sweepLow  = showLiquidity and low < ta.lowest(low[1], liqLookback) and close > ta.lowest(low[1], liqLookback) and body > 0 and lowerWick / body >= wickRatioMin
+
+plotshape(sweepHigh, title="Sweep High", style=shape.circle, location=location.abovebar, color=color.new(color.red, 70), size=size.small)
+plotshape(sweepLow,  title="Sweep Low",  style=shape.circle, location=location.belowbar, color=color.new(color.green, 70), size=size.small)
+
+bearTrap = showLiquidity and volSpike and high > high[1] and close < high[1]
+bullTrap = showLiquidity and volSpike and low < low[1] and close > low[1]
+
+//====================================================
+// 7) Score
+//====================================================
+score = 0
+score += close > ema13 ? 1 : -1
+score += close > ema30 ? 1 : -1
+score += rsi > 50 ? 1 : -1
+score += adx > 20 ? 1 : 0
+score += volSpike ? 1 : 0
+score += sweepLow ? 1 : 0
+score += sweepHigh ? -1 : 0
+score += bullTrap ? 1 : 0
+score += bearTrap ? -1 : 0
+
+marketBias =
+     score >= 4  ? "Bullish"
+   : score <= -4 ? "Bearish"
+   : "Neutral"
+
+//====================================================
+// 8) Dashboard
+//====================================================
+var table dash = table.new(position.bottom_right, 2, 6, border_width=1)
+
+trendText =
+     close > ema13 and ema13 > ema30 ? "Bullish"
+   : close < ema13 and ema13 < ema30 ? "Bearish"
+   : "Sideways"
+
+lastBreakText =
+     chochUp ? "CHOCH Bull"
+   : chochDn ? "CHOCH Bear"
+   : bosUp   ? "Break Bull"
+   : bosDn   ? "Break Bear"
+   : "None"
+
+activeLevels = 0
+
+//====================================================
+// 9) Legend
+//====================================================
+// no extra legend table here to keep screen clean
+
+//====================================================
+// Zone Engine
+//====================================================
+atr = ta.atr(14)
+zoneSize = atr * zoneATRMult
+
+var box[] supplyBoxes = array.new_box()
+var box[] demandBoxes = array.new_box()
+var float[] supplyTopArr = array.new_float()
+var float[] supplyBotArr = array.new_float()
+var float[] demandTopArr = array.new_float()
+var float[] demandBotArr = array.new_float()
+var bool[] supplyBrokenArr = array.new_bool()
+var bool[] demandBrokenArr = array.new_bool()
+
+f_is_far_from_existing(_price, _arrTop, _pct) =>
+    ok = true
+    if array.size(_arrTop) > 0
+        for i = 0 to array.size(_arrTop) - 1
+            lvl = array.get(_arrTop, i)
+            distPct = math.abs(_price - lvl) / lvl * 100.0
+            if distPct < _pct
+                ok := false
+    ok
+
+f_trim_supply() =>
+    while array.size(supplyBoxes) > maxActiveZones
+        oldBox = array.shift(supplyBoxes)
+        box.delete(oldBox)
+        array.shift(supplyTopArr)
+        array.shift(supplyBotArr)
+        array.shift(supplyBrokenArr)
+
+f_trim_demand() =>
+    while array.size(demandBoxes) > maxActiveZones
+        oldBox = array.shift(demandBoxes)
+        box.delete(oldBox)
+        array.shift(demandTopArr)
+        array.shift(demandBotArr)
+        array.shift(demandBrokenArr)
+
+if showZones and not na(ph) and f_is_far_from_existing(ph, supplyTopArr, minZoneDistance)
+    top_ = ph
+    bot_ = ph - zoneSize
+    bx = box.new(left=bar_index - pivotLen, top=top_, right=bar_index + extendBars, bottom=bot_, bgcolor=color.new(color.red, 85), border_color=color.new(color.red, 15))
+    array.push(supplyBoxes, bx)
+    array.push(supplyTopArr, top_)
+    array.push(supplyBotArr, bot_)
+    array.push(supplyBrokenArr, false)
+    f_trim_supply()
+
+if showZones and not na(pl) and f_is_far_from_existing(pl, demandBotArr, minZoneDistance)
+    top_ = pl + zoneSize
+    bot_ = pl
+    bx = box.new(left=bar_index - pivotLen, top=top_, right=bar_index + extendBars, bottom=bot_, bgcolor=color.new(color.green, 85), border_color=color.new(color.green, 15))
+    array.push(demandBoxes, bx)
+    array.push(demandTopArr, top_)
+    array.push(demandBotArr, bot_)
+    array.push(demandBrokenArr, false)
+    f_trim_demand()
+
+if array.size(supplyBoxes) > 0
+    for i = 0 to array.size(supplyBoxes) - 1
+        bx = array.get(supplyBoxes, i)
+        top_ = array.get(supplyTopArr, i)
+        bot_ = array.get(supplyBotArr, i)
+        broken_ = array.get(supplyBrokenArr, i)
+        box.set_right(bx, bar_index + extendBars)
+        if not broken_ and close > top_
+            array.set(supplyBrokenArr, i, true)
+            if showBreaks
+                label.new(bar_index, top_, "Break", style=label.style_label_up, color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
+
+if array.size(demandBoxes) > 0
+    for i = 0 to array.size(demandBoxes) - 1
+        bx = array.get(demandBoxes, i)
+        top_ = array.get(demandTopArr, i)
+        bot_ = array.get(demandBotArr, i)
+        broken_ = array.get(demandBrokenArr, i)
+        box.set_right(bx, bar_index + extendBars)
+        if not broken_ and close < bot_
+            array.set(demandBrokenArr, i, true)
+            if showBreaks
+                label.new(bar_index, bot_, "Break", style=label.style_label_down, color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
+
+activeLevels := array.size(supplyBoxes) + array.size(demandBoxes)
+
+float nearestSupply = na
+float nearestDemand = na
+
+if array.size(supplyTopArr) > 0
+    float bestSupply = na
+    for i = 0 to array.size(supplyTopArr) - 1
+        lvl = array.get(supplyBotArr, i)
+        if lvl > close
+            bestSupply := na(bestSupply) ? lvl : math.min(bestSupply, lvl)
+    nearestSupply := bestSupply
+
+if array.size(demandBotArr) > 0
+    float bestDemand = na
+    for i = 0 to array.size(demandBotArr) - 1
+        lvl = array.get(demandTopArr, i)
+        if lvl < close
+            bestDemand := na(bestDemand) ? lvl : math.max(bestDemand, lvl)
+    nearestDemand := bestDemand
+
+if showDashboard and barstate.islast
+    table.clear(dash, 0, 0)
+
+    headerBg = color.new(color.rgb(30, 40, 70), 0)
+    cellBg   = color.new(color.black, 75)
+
+    table.cell(dash, 0, 0, "S/R Dashboard", text_color=color.white, bgcolor=headerBg, text_size=mobileMode ? size.tiny : size.small)
+    table.cell(dash, 1, 0, "", text_color=color.white, bgcolor=headerBg, text_size=mobileMode ? size.tiny : size.small)
+
+    table.cell(dash, 0, 1, "Resistance", text_color=color.white, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+    table.cell(dash, 1, 1, na(nearestSupply) ? "N/A" : str.tostring(nearestSupply, format.mintick), text_color=color.red, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+
+    table.cell(dash, 0, 2, "Support", text_color=color.white, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+    table.cell(dash, 1, 2, na(nearestDemand) ? "N/A" : str.tostring(nearestDemand, format.mintick), text_color=color.lime, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+
+    table.cell(dash, 0, 3, "Last Break", text_color=color.white, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+    table.cell(dash, 1, 3, lastBreakText, text_color=lastBreakText == "None" ? color.gray : color.fuchsia, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+
+    table.cell(dash, 0, 4, "Bias", text_color=color.white, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+    table.cell(dash, 1, 4, marketBias, text_color=marketBias == "Bullish" ? color.lime : marketBias == "Bearish" ? color.red : color.yellow, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+
+    table.cell(dash, 0, 5, "Active Levels", text_color=color.white, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+    table.cell(dash, 1, 5, str.tostring(activeLevels), text_color=color.aqua, bgcolor=cellBg, text_size=mobileMode ? size.tiny : size.small)
+
+//====================================================
+// 10) Alerts
+//====================================================
+alertcondition(bosUp, title="BOS Up", message="BOS Up on {{ticker}}")
+alertcondition(bosDn, title="BOS Down", message="BOS Down on {{ticker}}")
+alertcondition(chochUp, title="CHOCH Up", message="CHOCH Up on {{ticker}}")
+alertcondition(chochDn, title="CHOCH Down", message="CHOCH Down on {{ticker}}")
+alertcondition(sweepHigh, title="Sweep High", message="Liquidity Sweep High on {{ticker}}")
+alertcondition(sweepLow, title="Sweep Low", message="Liquidity Sweep Low on {{ticker}}")
+alertcondition(bullTrap, title="Bull Trap", message="Bull Trap on {{ticker}}")
+alertcondition(bearTrap, title="Bear Trap", message="Bear Trap on {{ticker}}")

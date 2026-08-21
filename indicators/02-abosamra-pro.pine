@@ -1,0 +1,201 @@
+//@version=6
+indicator("AboSamra Pro | أبو السمرة الاحترافي", shorttitle="AboSamra Pro", overlay=true, max_lines_count=100, max_labels_count=50, max_boxes_count=50)
+
+// ============================================================
+// Full Name : AboSamra Pro | أبو السمرة الاحترافي
+// Author    : علاء
+// Version   : 1.1
+// Type      : Indicator (Trend + Momentum + Dashboard)
+// Notes     : EMA(9,21,50,200) + RSI + manual S/R dashboard
+// ============================================================
+
+// ============================================================
+// INPUTS
+// ============================================================
+ema9_len   = input.int(9,   title="EMA 9",   minval=1, group="EMA Settings", inline="ema1")
+ema21_len  = input.int(21,  title="EMA 21",  minval=1, group="EMA Settings", inline="ema1")
+ema50_len  = input.int(50,  title="EMA 50",  minval=1, group="EMA Settings", inline="ema2")
+ema200_len = input.int(200, title="EMA 200", minval=1, group="EMA Settings", inline="ema2")
+
+rsi_len        = input.int(14, title="RSI Length", minval=1, group="RSI Settings")
+rsi_overbought = input.int(70, title="Overbought Level", minval=1, maxval=100, group="RSI Settings")
+rsi_oversold   = input.int(30, title="Oversold Level", minval=1, maxval=100, group="RSI Settings")
+
+show_sd_levels  = input.bool(true, title="Show Support/Resistance Levels", group="S&D Levels")
+support_level   = input.float(7.20, title="Support Level", group="S&D Levels")
+resistance_level= input.float(9.20, title="Resistance Level", group="S&D Levels")
+
+show_signals = input.bool(true, title="Show Buy/Sell Signals", group="Display Settings")
+show_bg      = input.bool(true, title="Show Trend Background", group="Display Settings")
+
+dash_pos = input.string(
+     "middle_right",
+     title="Dashboard Position",
+     options=["middle_left", "middle_right", "top_left", "top_right", "bottom_left", "bottom_right"],
+     group="Dashboard Settings"
+)
+
+// ============================================================
+// CALCULATIONS
+// ============================================================
+ema9   = ta.ema(close, ema9_len)
+ema21  = ta.ema(close, ema21_len)
+ema50  = ta.ema(close, ema50_len)
+ema200 = ta.ema(close, ema200_len)
+
+rsi_value     = ta.rsi(close, rsi_len)
+current_price = close
+
+// ============================================================
+// TREND / MOMENTUM LOGIC
+// ============================================================
+trend_ema_bullish = ema9 > ema21 and ema21 > ema50 and ema50 > ema200
+trend_ema_bearish = ema9 < ema21 and ema21 < ema50 and ema50 < ema200
+trend_ema_neutral = not trend_ema_bullish and not trend_ema_bearish
+
+trend_direction = trend_ema_bullish ? "صاعد 📈" : trend_ema_bearish ? "هابط 📉" : "عرضي 〰️"
+trend_color     = trend_ema_bullish ? color.lime : trend_ema_bearish ? color.red : color.gray
+
+momentum_strong_buy  = rsi_value > 60
+momentum_buy         = rsi_value > 50 and rsi_value <= 60
+momentum_neutral     = rsi_value >= 40 and rsi_value <= 50
+momentum_sell        = rsi_value < 40 and rsi_value >= 30
+momentum_strong_sell = rsi_value < 30
+
+momentum_text = momentum_strong_buy ? "قوي جداً ⚡" : momentum_buy ? "قوي ✓" : momentum_neutral ? "متوازن ◯" : momentum_sell ? "ضعيف ✗" : "ضعيف جداً ⚠️"
+momentum_color = momentum_strong_buy ? color.lime : momentum_buy ? color.new(color.lime, 40) : momentum_neutral ? color.gray : momentum_sell ? color.new(color.red, 40) : color.red
+
+ema9_cross_21 = ta.cross(ema9, ema21)
+ema9_above_21 = ema9 > ema21
+buy_signal    = ema9_cross_21 and ema9_above_21 and (momentum_buy or momentum_strong_buy)
+sell_signal   = ema9_cross_21 and not ema9_above_21 and (momentum_sell or momentum_strong_sell)
+
+price_status = current_price > resistance_level ? "فوق المقاومة 🔴" : current_price < support_level ? "تحت الدعم 🟢" : "بين الدعم والمقاومة ⚪"
+price_color  = current_price > resistance_level ? color.red : current_price < support_level ? color.lime : color.orange
+
+string decision = "لا توجد أفضلية 🔘"
+color decision_color = color.gray
+
+if trend_ema_bullish and (momentum_buy or momentum_strong_buy)
+    decision := "شراء قوي ✅"
+    decision_color := color.lime
+else if trend_ema_bullish and momentum_neutral
+    decision := "شراء ضعيف ⚠️"
+    decision_color := color.new(color.lime, 40)
+else if trend_ema_bearish and (momentum_sell or momentum_strong_sell)
+    decision := "بيع قوي ✅"
+    decision_color := color.red
+else if trend_ema_bearish and momentum_neutral
+    decision := "بيع ضعيف ⚠️"
+    decision_color := color.new(color.red, 40)
+else if trend_ema_neutral
+    decision := "انتظار / حياد 🟡"
+    decision_color := color.orange
+
+// ============================================================
+// VISUALS
+// ============================================================
+plot(ema9, title="EMA 9", color=color.blue, linewidth=2)
+plot(ema21, title="EMA 21", color=color.aqua, linewidth=2)
+plot(ema50, title="EMA 50", color=color.orange, linewidth=2)
+plot(ema200, title="EMA 200", color=color.red, linewidth=2)
+
+var line support_line = na
+var line resistance_line = na
+
+if show_sd_levels and barstate.islast
+    if na(support_line)
+        support_line := line.new(bar_index, support_level, bar_index + 1, support_level, extend=extend.both, color=color.new(color.lime, 50), width=2, style=line.style_dashed)
+    else
+        line.set_xy1(support_line, bar_index, support_level)
+        line.set_xy2(support_line, bar_index + 1, support_level)
+
+    if na(resistance_line)
+        resistance_line := line.new(bar_index, resistance_level, bar_index + 1, resistance_level, extend=extend.both, color=color.new(color.red, 50), width=2, style=line.style_dashed)
+    else
+        line.set_xy1(resistance_line, bar_index, resistance_level)
+        line.set_xy2(resistance_line, bar_index + 1, resistance_level)
+else if not show_sd_levels
+    if not na(support_line)
+        line.delete(support_line)
+        support_line := na
+    if not na(resistance_line)
+        line.delete(resistance_line)
+        resistance_line := na
+
+plotshape(show_signals and buy_signal,  title="Buy Signal",  location=location.belowbar, style=shape.triangleup,   size=size.small, color=color.lime, text="BUY")
+plotshape(show_signals and sell_signal, title="Sell Signal", location=location.abovebar, style=shape.triangledown, size=size.small, color=color.red,  text="SELL")
+
+bgcolor(show_bg ? (trend_ema_bullish ? color.new(color.lime, 95) : trend_ema_bearish ? color.new(color.red, 95) : na) : na)
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+getTablePosition(_pos) =>
+    _pos == "middle_left" ? position.middle_left :
+     _pos == "middle_right" ? position.middle_right :
+     _pos == "top_left" ? position.top_left :
+     _pos == "top_right" ? position.top_right :
+     _pos == "bottom_left" ? position.bottom_left :
+     position.bottom_right
+
+var table dash = table.new(getTablePosition(dash_pos), 3, 11, border_color=color.gray, border_width=1, frame_color=color.gray, frame_width=1)
+
+if barstate.islast
+    distance_support_pct    = support_level != 0 ? ((current_price - support_level) / support_level) * 100 : na
+    distance_resistance_pct = current_price != 0 ? ((resistance_level - current_price) / current_price) * 100 : na
+    ema_status = trend_ema_bullish ? "صاعد ✓" : trend_ema_bearish ? "هابط ✗" : "عرضي ◯"
+    signal_text = buy_signal ? "شراء ▲" : sell_signal ? "بيع ▼" : "لا توجد"
+    signal_color_bg = buy_signal ? color.lime : sell_signal ? color.red : color.gray
+
+    table.cell(dash, 0, 0, "المؤشر", bgcolor=color.new(color.gray, 30), text_color=color.white, text_size=size.normal)
+    table.cell(dash, 1, 0, "القيمة", bgcolor=color.new(color.gray, 30), text_color=color.white, text_size=size.normal)
+    table.cell(dash, 2, 0, "التقييم", bgcolor=color.new(color.gray, 30), text_color=color.white, text_size=size.normal)
+
+    table.cell(dash, 0, 1, "السعر الحالي", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 1, str.tostring(current_price, "#.###"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 1, price_status, bgcolor=price_color, text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 2, "الاتجاه العام", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 2, ema_status, bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 2, "EMA 9>21>50>200", bgcolor=trend_color, text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 3, "الزخم (RSI)", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 3, str.tostring(rsi_value, "#.##"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 3, momentum_text, bgcolor=momentum_color, text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 4, "EMA 9", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 4, str.tostring(ema9, "#.###"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 4, ema9 > ema21 ? "فوق ✓" : "تحت ✗", bgcolor=ema9 > ema21 ? color.new(color.lime, 60) : color.new(color.red, 60), text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 5, "EMA 21", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 5, str.tostring(ema21, "#.###"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 5, ema21 > ema50 ? "فوق ✓" : "تحت ✗", bgcolor=ema21 > ema50 ? color.new(color.lime, 60) : color.new(color.red, 60), text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 6, "EMA 50", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 6, str.tostring(ema50, "#.###"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 6, ema50 > ema200 ? "فوق ✓" : "تحت ✗", bgcolor=ema50 > ema200 ? color.new(color.lime, 60) : color.new(color.red, 60), text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 7, "الدعم", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 7, str.tostring(support_level, "#.###"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 7, na(distance_support_pct) ? "N/A" : str.tostring(distance_support_pct, "+#.##") + "%", bgcolor=color.new(color.lime, 60), text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 8, "المقاومة", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 8, str.tostring(resistance_level, "#.###"), bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 2, 8, na(distance_resistance_pct) ? "N/A" : str.tostring(distance_resistance_pct, "+#.##") + "%", bgcolor=color.new(color.red, 60), text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 9, "الإشارة", bgcolor=color.new(color.gray, 80), text_color=color.white)
+    table.cell(dash, 1, 9, signal_text, bgcolor=signal_color_bg, text_color=color.white)
+    table.cell(dash, 2, 9, "مؤكدة", bgcolor=color.new(color.orange, 60), text_color=color.white, text_size=size.small)
+
+    table.cell(dash, 0, 10, "القرار النهائي", bgcolor=color.new(color.gray, 30), text_color=color.white)
+    table.cell(dash, 1, 10, decision, bgcolor=decision_color, text_color=color.white, text_size=size.small)
+    table.cell(dash, 2, 10, trend_direction, bgcolor=trend_color, text_color=color.white, text_size=size.small)
+
+// ============================================================
+// ALERTS
+// ============================================================
+alertcondition(buy_signal, title="Strong Buy Signal", message="إشارة شراء قوية لـ {{ticker}} - السعر {{close}}")
+alertcondition(sell_signal, title="Strong Sell Signal", message="إشارة بيع قوية لـ {{ticker}} - السعر {{close}}")
+alertcondition(trend_ema_bullish and not trend_ema_bullish[1], title="Trend Changed to Bullish", message="الاتجاه تغير إلى صاعد {{ticker}}")
+alertcondition(trend_ema_bearish and not trend_ema_bearish[1], title="Trend Changed to Bearish", message="الاتجاه تغير إلى هابط {{ticker}}")
