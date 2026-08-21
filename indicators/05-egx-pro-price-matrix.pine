@@ -21,13 +21,15 @@ emaSlowLen = input.int(200, "Main Trend EMA", minval=1, group=groupTrend)
 volumeLen = input.int(20, "Volume MA Length", minval=1, group=groupTrend)
 showDashboard = input.bool(true, "Show Dashboard", group=groupVisual)
 showSignals = input.bool(true, "Show Liquidity Signals", group=groupVisual)
+confirmOnClose = input.bool(true, "Confirm Signals On Bar Close", tooltip="When enabled, entry and exit signals wait for the chart bar to close.", group=groupVisual)
 
 //====================
 // DAILY PIVOT MATRIX
 //====================
-pHigh = request.security(syminfo.tickerid, "D", high[1], barmerge.gaps_off, barmerge.lookahead_off)
-pLow = request.security(syminfo.tickerid, "D", low[1], barmerge.gaps_off, barmerge.lookahead_off)
-pClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_off)
+// The one-bar offset plus lookahead_on exposes only the last confirmed daily bar.
+pHigh = request.security(syminfo.tickerid, "D", high[1], barmerge.gaps_off, barmerge.lookahead_on)
+pLow = request.security(syminfo.tickerid, "D", low[1], barmerge.gaps_off, barmerge.lookahead_on)
+pClose = request.security(syminfo.tickerid, "D", close[1], barmerge.gaps_off, barmerge.lookahead_on)
 
 hasDailyData = not na(pHigh) and not na(pLow) and not na(pClose)
 pivot = hasDailyData ? (pHigh + pLow + pClose) / 3.0 : na
@@ -54,8 +56,11 @@ highVolume = not na(volMA) and volume > volMA
 plot(emaFast, color=color.new(color.aqua, 0), title="Liquidity EMA")
 plot(emaSlow, color=color.new(color.purple, 0), title="Main Trend EMA", linewidth=2)
 
-buySignal = not na(pivot) and ta.crossover(close, pivot) and close > emaFast
-sellSignal = not na(pivot) and ta.crossunder(close, pivot) and close < emaFast
+crossedAbovePivot = ta.crossover(close, pivot)
+crossedBelowPivot = ta.crossunder(close, pivot)
+signalReady = not confirmOnClose or barstate.isconfirmed
+buySignal = not na(pivot) and crossedAbovePivot and close > emaFast and signalReady
+sellSignal = not na(pivot) and crossedBelowPivot and close < emaFast and signalReady
 
 plotshape(showSignals and buySignal, title="Liquidity Entry", style=shape.triangleup, location=location.belowbar, color=color.lime, size=size.small, text="IN")
 plotshape(showSignals and sellSignal, title="Liquidity Exit", style=shape.triangledown, location=location.abovebar, color=color.red, size=size.small, text="OUT")
@@ -118,3 +123,4 @@ if showDashboard and barstate.islast
 //====================
 alertcondition(buySignal, title="EGX Price Matrix Entry", message="EGX Pro Price Matrix: liquidity entry signal on {{ticker}}.")
 alertcondition(sellSignal, title="EGX Price Matrix Exit", message="EGX Pro Price Matrix: liquidity exit signal on {{ticker}}.")
+

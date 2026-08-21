@@ -40,6 +40,7 @@ showZones       = input.bool(true,  "Show Supply / Demand Zones", group=groupCor
 showBreaks      = input.bool(true,  "Show Break Labels", group=groupCore)
 showLiquidity   = input.bool(true,  "Show Liquidity Dots", group=groupCore)
 showDashboard   = input.bool(true,  "Show Dashboard", group=groupCore)
+confirmOnClose  = input.bool(true,  "Confirm Signals On Bar Close", tooltip="When enabled, structure, sweep, trap, and alert signals wait for the chart bar to close.", group=groupCore)
 mobileMode      = input.bool(true,  "Mobile Mode", group=groupCore)
 extendBars      = input.int(120,    "Zone Extend Bars", minval=20, maxval=300, group=groupCore)
 maxActiveZones  = input.int(4,      "Max Active Zones", minval=2, maxval=8, group=groupCore)
@@ -105,8 +106,11 @@ if not na(pl)
     lastPivotLow := pl
     lastPivotLowBar := bar_index - pivotLen
 
-bosUp = showStructure and not na(lastPivotHigh) and ta.crossover(close, lastPivotHigh)
-bosDn = showStructure and not na(lastPivotLow)  and ta.crossunder(close, lastPivotLow)
+crossedAbovePivot = ta.crossover(close, lastPivotHigh)
+crossedBelowPivot = ta.crossunder(close, lastPivotLow)
+signalReady = not confirmOnClose or barstate.isconfirmed
+bosUp = showStructure and not na(lastPivotHigh) and crossedAbovePivot and signalReady
+bosDn = showStructure and not na(lastPivotLow) and crossedBelowPivot and signalReady
 
 var int structureBias = 0
 chochUp = bosUp and structureBias == -1
@@ -136,15 +140,17 @@ wickRatioMin  = input.float(1.2, "Min Wick/Body Ratio", minval=0.3, maxval=5.0, 
 body = math.abs(close - open)
 upperWick = high - math.max(open, close)
 lowerWick = math.min(open, close) - low
+previousHigh = ta.highest(high[1], liqLookback)
+previousLow = ta.lowest(low[1], liqLookback)
 
-sweepHigh = showLiquidity and high > ta.highest(high[1], liqLookback) and close < ta.highest(high[1], liqLookback) and body > 0 and upperWick / body >= wickRatioMin
-sweepLow  = showLiquidity and low < ta.lowest(low[1], liqLookback) and close > ta.lowest(low[1], liqLookback) and body > 0 and lowerWick / body >= wickRatioMin
+sweepHigh = showLiquidity and high > previousHigh and close < previousHigh and body > 0 and upperWick / body >= wickRatioMin and signalReady
+sweepLow  = showLiquidity and low < previousLow and close > previousLow and body > 0 and lowerWick / body >= wickRatioMin and signalReady
 
 plotshape(sweepHigh, title="Sweep High", style=shape.circle, location=location.abovebar, color=color.new(color.red, 70), size=size.small)
 plotshape(sweepLow,  title="Sweep Low",  style=shape.circle, location=location.belowbar, color=color.new(color.green, 70), size=size.small)
 
-bearTrap = showLiquidity and volSpike and high > high[1] and close < high[1]
-bullTrap = showLiquidity and volSpike and low < low[1] and close > low[1]
+bearTrap = showLiquidity and volSpike and high > high[1] and close < high[1] and signalReady
+bullTrap = showLiquidity and volSpike and low < low[1] and close > low[1] and signalReady
 
 //====================================================
 // 7) Score
@@ -175,12 +181,15 @@ trendText =
    : close < ema13 and ema13 < ema30 ? "Bearish"
    : "Sideways"
 
-lastBreakText =
-     chochUp ? "CHOCH Bull"
-   : chochDn ? "CHOCH Bear"
-   : bosUp   ? "Break Bull"
-   : bosDn   ? "Break Bear"
-   : "None"
+var string lastBreakText = "None"
+if chochUp
+    lastBreakText := "CHOCH Bull"
+else if chochDn
+    lastBreakText := "CHOCH Bear"
+else if bosUp
+    lastBreakText := "Break Bull"
+else if bosDn
+    lastBreakText := "Break Bear"
 
 activeLevels = 0
 
@@ -256,11 +265,15 @@ if array.size(supplyBoxes) > 0
         top_ = array.get(supplyTopArr, i)
         bot_ = array.get(supplyBotArr, i)
         broken_ = array.get(supplyBrokenArr, i)
-        box.set_right(bx, bar_index + extendBars)
-        if not broken_ and close > top_
-            array.set(supplyBrokenArr, i, true)
-            if showBreaks
-                label.new(bar_index, top_, "Break", style=label.style_label_up, color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
+        if not broken_
+            box.set_right(bx, bar_index + extendBars)
+            if close > top_ and signalReady
+                array.set(supplyBrokenArr, i, true)
+                box.set_right(bx, bar_index)
+                box.set_bgcolor(bx, color.new(color.gray, 94))
+                box.set_border_color(bx, color.new(color.gray, 75))
+                if showBreaks
+                    label.new(bar_index, top_, "Break", style=label.style_label_up, color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
 
 if array.size(demandBoxes) > 0
     for i = 0 to array.size(demandBoxes) - 1
@@ -268,13 +281,22 @@ if array.size(demandBoxes) > 0
         top_ = array.get(demandTopArr, i)
         bot_ = array.get(demandBotArr, i)
         broken_ = array.get(demandBrokenArr, i)
-        box.set_right(bx, bar_index + extendBars)
-        if not broken_ and close < bot_
-            array.set(demandBrokenArr, i, true)
-            if showBreaks
-                label.new(bar_index, bot_, "Break", style=label.style_label_down, color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
+        if not broken_
+            box.set_right(bx, bar_index + extendBars)
+            if close < bot_ and signalReady
+                array.set(demandBrokenArr, i, true)
+                box.set_right(bx, bar_index)
+                box.set_bgcolor(bx, color.new(color.gray, 94))
+                box.set_border_color(bx, color.new(color.gray, 75))
+                if showBreaks
+                    label.new(bar_index, bot_, "Break", style=label.style_label_down, color=color.new(color.red, 10), textcolor=color.white, size=size.tiny)
 
-activeLevels := array.size(supplyBoxes) + array.size(demandBoxes)
+if array.size(supplyBrokenArr) > 0
+    for i = 0 to array.size(supplyBrokenArr) - 1
+        activeLevels += array.get(supplyBrokenArr, i) ? 0 : 1
+if array.size(demandBrokenArr) > 0
+    for i = 0 to array.size(demandBrokenArr) - 1
+        activeLevels += array.get(demandBrokenArr, i) ? 0 : 1
 
 float nearestSupply = na
 float nearestDemand = na
@@ -283,7 +305,8 @@ if array.size(supplyTopArr) > 0
     float bestSupply = na
     for i = 0 to array.size(supplyTopArr) - 1
         lvl = array.get(supplyBotArr, i)
-        if lvl > close
+        isActive = not array.get(supplyBrokenArr, i)
+        if isActive and lvl > close
             bestSupply := na(bestSupply) ? lvl : math.min(bestSupply, lvl)
     nearestSupply := bestSupply
 
@@ -291,7 +314,8 @@ if array.size(demandBotArr) > 0
     float bestDemand = na
     for i = 0 to array.size(demandBotArr) - 1
         lvl = array.get(demandTopArr, i)
-        if lvl < close
+        isActive = not array.get(demandBrokenArr, i)
+        if isActive and lvl < close
             bestDemand := na(bestDemand) ? lvl : math.max(bestDemand, lvl)
     nearestDemand := bestDemand
 
@@ -330,3 +354,4 @@ alertcondition(sweepHigh, title="Sweep High", message="Liquidity Sweep High on {
 alertcondition(sweepLow, title="Sweep Low", message="Liquidity Sweep Low on {{ticker}}")
 alertcondition(bullTrap, title="Bull Trap", message="Bull Trap on {{ticker}}")
 alertcondition(bearTrap, title="Bear Trap", message="Bear Trap on {{ticker}}")
+

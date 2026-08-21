@@ -50,11 +50,13 @@ A daily pivot matrix with confirmed prior-day OHLC levels, trend filters, liquid
 
 | Indicator | Pine v6 compile | Visual chart check | Repainting notes |
 |---|---:|---:|---|
-| Smart EGX Liquidity S/R Dashboard | Passed | Passed | Pivots are confirmed after the configured right-side bars; live-bar conditions may fluctuate until close. |
+| Smart EGX Liquidity S/R Dashboard | Revalidation required | Revalidation required | Pivots are delayed by confirmation bars. Signals wait for bar close by default and broken zones are excluded from active-level calculations. |
 | AboSamra Pro | Passed | Passed | No higher-timeframe requests; live-bar signals may fluctuate until close. |
 | EGX Smart Balance Matrix Pro | Passed | Passed | Pivot-based structure is delayed by confirmation bars; live score may update intrabar. |
 | Smart Correction Signals Pro | Passed | Passed | Fibonacci anchors use confirmed pivots; current-bar setups may change before close. |
-| EGX Pro Price Matrix | Passed | Passed | Daily matrix uses prior-day OHLC values; current-bar entry/exit signals may change before close. |
+| EGX Pro Price Matrix | Revalidation required | Revalidation required | Daily levels use confirmed prior-day OHLC values. Entry/exit signals wait for bar close by default. |
+
+The two entries marked **Revalidation required** contain post-publication reliability improvements. Compile them again in TradingView and refresh their screenshots before changing their status back to Passed.
 
 ## Pine v6 compatibility fixes
 
@@ -64,6 +66,14 @@ Two source-level compatibility fixes were applied to the portfolio copies after 
 - Renamed the reserved identifier `range` to `swingRange`.
 
 The underlying indicator logic was not changed.
+
+## Reliability improvements under review
+
+- Added an optional `Confirm Signals On Bar Close` control, enabled by default, to the liquidity dashboard and price matrix.
+- Preserved the most recent BOS/CHOCH text in the liquidity dashboard instead of resetting it on the next bar.
+- Excluded broken supply and demand zones from active-level counts and nearest-level calculations.
+- Switched prior-day OHLC requests to the confirmed higher-timeframe pattern: a one-bar offset with `barmerge.lookahead_on`.
+- Added a repeatable TradingView validation checklist in [`TESTING.md`](TESTING.md).
 
 ## Usage
 
@@ -86,4 +96,5 @@ This repository is for education, software demonstration, and technical research
 
 ## Copyright
 
-Copyright © 2026 Alaamo7. No license is granted for redistribution, resale, or commercial use unless the owner provides written permission.
+Copyright © 2026 Alaamo7. See [`LICENSE.md`](LICENSE.md) for usage terms.
+
