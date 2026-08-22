@@ -35,6 +35,12 @@ A technical case study covering EMA trend context, RSI/MACD/Bollinger confirmati
 
 [Read the engineering case study](docs/case-studies/smart-correction-signals-pro.md)
 
+### EGX Pro Price Matrix
+
+A technical case study covering prior-day daily OHLC retrieval, pivot-derived matrix levels, EMA/volume context, managed right-side labels, live pivot-cross events, and the distinction between stable reference levels and mutable current-bar signals.
+
+[Read the engineering case study](docs/case-studies/04-egx-pro-price-matrix.md)
+
 ## Portfolio
 
 ### 1. Smart EGX Liquidity S/R Dashboard
@@ -75,7 +81,7 @@ A daily pivot matrix with confirmed prior-day OHLC levels, trend filters, liquid
 
 ![EGX Pro Price Matrix](screenshots/05-egx-pro-price-matrix.png)
 
-[View Pine Script](indicators/05-egx-pro-price-matrix.pine)
+[View Pine Script](indicators/05-egx-pro-price-matrix.pine) · [Read Case Study](docs/case-studies/04-egx-pro-price-matrix.md)
 
 ## Verification status
 
