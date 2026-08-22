@@ -11,9 +11,12 @@ A curated portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX
 - **5 / 5** received a visual chart check
 - Screenshots included for every portfolio item
 - Repainting / confirmation behavior documented where relevant
+- **5 / 5** indicators now have engineering case studies
 - Technical case studies document implementation behavior without claiming trading profitability
 
 For the larger TradingView validation project covering **120 individually tested scripts**, see [`pine-script-indicators`](https://github.com/Alaamo7/pine-script-indicators).
+
+**Browse all engineering case studies:** [`docs/case-studies/README.md`](docs/case-studies/README.md)
 
 ## Featured case studies
 
@@ -22,6 +25,12 @@ For the larger TradingView validation project covering **120 individually tested
 A technical case study covering confirmed pivots, supply/demand zone state, BOS/CHOCH logic, liquidity-sweep heuristics, managed chart objects, dashboard rendering, alert hooks, and repainting/timing limitations.
 
 [Read the engineering case study](docs/case-studies/smart-egx-liquidity-sr-dashboard.md)
+
+### AboSamra Pro
+
+A technical case study covering a strict four-EMA trend model, RSI momentum classification, manual support/resistance context, Arabic-first dashboard design, signal generation, and live-bar limitations.
+
+[Read the engineering case study](docs/case-studies/05-abosamra-pro.md)
 
 ### EGX Smart Balance Matrix Pro
 
@@ -57,7 +66,7 @@ A bilingual trend and momentum dashboard combining EMA 9/21/50/200, RSI, signals
 
 ![AboSamra Pro](screenshots/02-abosamra-pro.png)
 
-[View Pine Script](indicators/02-abosamra-pro.pine)
+[View Pine Script](indicators/02-abosamra-pro.pine) · [Read Case Study](docs/case-studies/05-abosamra-pro.md)
 
 ### 3. EGX Smart Balance Matrix Pro
 
