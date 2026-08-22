@@ -11,8 +11,17 @@ A curated portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX
 - **5 / 5** received a visual chart check
 - Screenshots included for every portfolio item
 - Repainting / confirmation behavior documented where relevant
+- Technical case studies document implementation behavior without claiming trading profitability
 
 For the larger TradingView validation project covering **120 individually tested scripts**, see [`pine-script-indicators`](https://github.com/Alaamo7/pine-script-indicators).
+
+## Featured case study
+
+### Smart EGX Liquidity S/R Dashboard
+
+A technical case study covering confirmed pivots, supply/demand zone state, BOS/CHOCH logic, liquidity-sweep heuristics, managed chart objects, dashboard rendering, alert hooks, and repainting/timing limitations.
+
+[Read the engineering case study](docs/case-studies/smart-egx-liquidity-sr-dashboard.md)
 
 ## Portfolio
 
@@ -22,7 +31,7 @@ Supply and demand zones, structure breaks, liquidity sweeps, traps, and a compac
 
 ![Smart EGX Liquidity S/R Dashboard](screenshots/01-smart-egx-liquidity-dashboard.png)
 
-[View Pine Script](indicators/01-smart-egx-liquidity-sr-dashboard.pine)
+[View Pine Script](indicators/01-smart-egx-liquidity-sr-dashboard.pine) · [Read Case Study](docs/case-studies/smart-egx-liquidity-sr-dashboard.md)
 
 ### 2. AboSamra Pro
 
