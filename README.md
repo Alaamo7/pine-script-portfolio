@@ -15,13 +15,19 @@ A curated portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX
 
 For the larger TradingView validation project covering **120 individually tested scripts**, see [`pine-script-indicators`](https://github.com/Alaamo7/pine-script-indicators).
 
-## Featured case study
+## Featured case studies
 
 ### Smart EGX Liquidity S/R Dashboard
 
 A technical case study covering confirmed pivots, supply/demand zone state, BOS/CHOCH logic, liquidity-sweep heuristics, managed chart objects, dashboard rendering, alert hooks, and repainting/timing limitations.
 
 [Read the engineering case study](docs/case-studies/smart-egx-liquidity-sr-dashboard.md)
+
+### EGX Smart Balance Matrix Pro
+
+A technical case study covering modular trend/momentum/liquidity engines, confirmed structure pivots, weighted scoring, threshold-cross signals, dashboard architecture, and validation limits.
+
+[Read the engineering case study](docs/case-studies/02-egx-smart-balance-matrix-pro.md)
 
 ## Portfolio
 
@@ -47,7 +53,7 @@ A multi-factor EGX dashboard combining trend, momentum, liquidity, pivots, marke
 
 ![EGX Smart Balance Matrix Pro](screenshots/03-egx-smart-balance-matrix.png)
 
-[View Pine Script](indicators/03-egx-smart-balance-matrix-pro.pine)
+[View Pine Script](indicators/03-egx-smart-balance-matrix-pro.pine) · [Read Case Study](docs/case-studies/02-egx-smart-balance-matrix-pro.md)
 
 ### 4. Smart Correction Signals Pro
 
