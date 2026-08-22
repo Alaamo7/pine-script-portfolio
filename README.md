@@ -1,8 +1,18 @@
 # Pine Script v6 Portfolio 📈
 
-A focused portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX) technical analysis. Every script in this repository was compiled and displayed successfully in TradingView before publication.
+A curated portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX) technical analysis. This repository is intentionally small: it focuses on presentation-ready examples with compile checks, chart evidence, and documented limitations rather than serving as the full script archive.
 
 > **Validation chart:** EGX:RMDA · 1D · screenshots captured on 2026-08-21. Market data shown by TradingView may be delayed.
+
+## Portfolio at a glance
+
+- **5** curated Pine Script v6 indicators
+- **5 / 5** compiled successfully during portfolio validation
+- **5 / 5** received a visual chart check
+- Screenshots included for every portfolio item
+- Repainting / confirmation behavior documented where relevant
+
+For the larger TradingView validation project covering **120 individually tested scripts**, see [`pine-script-indicators`](https://github.com/Alaamo7/pine-script-indicators).
 
 ## Portfolio
 
@@ -79,6 +89,10 @@ The underlying indicator logic was not changed.
 - Pivot-based signals are known only after the configured confirmation bars.
 - A successful compile and visual check do not guarantee trading performance.
 - Test on multiple symbols, timeframes, and market conditions before any practical use.
+
+## Related repository
+
+[`pine-script-indicators`](https://github.com/Alaamo7/pine-script-indicators) contains the broader EGX/Pine Script toolkit, archive, documentation, and TradingView validation evidence.
 
 ## Disclaimer
 
