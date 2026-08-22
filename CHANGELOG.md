@@ -2,6 +2,17 @@
 
 This file tracks portfolio presentation, validation evidence, documentation, and repository-level improvements. It does not represent investment-performance claims.
 
+## 2026-08-22 — Workflow and repository validation upgrade
+
+- Added `CONTRIBUTING.md` with an issue → branch → TradingView validation → documentation → PR workflow.
+- Added bug-report and documentation issue templates.
+- Added a pull-request template with compile, chart, screenshot, live-bar, alert, and limitation checks.
+- Added `docs/VERSIONING.md` with release-readiness criteria and a semantic-style versioning policy.
+- Added `scripts/validate_repo.py` to verify required files, the curated five-indicator set, screenshots, and relative Markdown links.
+- Added a GitHub Actions repository-validation workflow for pushes and pull requests targeting `main`.
+- Documented the repository naming policy while retaining stable public case-study paths.
+- Opened an engineering roadmap issue for deeper multi-symbol / multi-timeframe validation before the first formal tagged release.
+
 ## 2026-08-22 — Engineering documentation upgrade
 
 - Added engineering case studies for all five curated Pine Script v6 indicators.
