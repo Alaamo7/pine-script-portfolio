@@ -4,6 +4,8 @@ A focused portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX
 
 > **Validation chart:** EGX:RMDA · 1D · screenshots captured on 2026-08-21. Market data shown by TradingView may be delayed.
 
+**Role demonstrated:** Pine Script v6 development · TradingView debugging · repainting-aware documentation · EGX technical-analysis UX.
+
 ## Portfolio
 
 ### 1. Smart EGX Liquidity S/R Dashboard
@@ -56,6 +58,16 @@ A daily pivot matrix with confirmed prior-day OHLC levels, trend filters, liquid
 | Smart Correction Signals Pro | Passed | Passed | Fibonacci anchors use confirmed pivots; current-bar setups may change before close. |
 | EGX Pro Price Matrix | Passed | Passed | Daily matrix uses prior-day OHLC values; current-bar entry/exit signals may change before close. |
 
+## Mini case studies
+
+### Liquidity dashboard: turning multiple events into one chart workflow
+
+The Smart EGX Liquidity S/R Dashboard combines confirmed supply/demand pivots, structure breaks, sweep/trap context, and a compact summary table. The TradingView validation verified compilation and the visual hierarchy on an EGX daily chart. It does **not** establish predictive profitability; pivot events remain delayed by their configured confirmation bars.
+
+### Price matrix: stable higher-timeframe context
+
+EGX Pro Price Matrix uses confirmed prior-day OHLC values for its daily levels while keeping current-chart entry and exit conditions visible. This separates stable reference levels from live-bar signals that can still change before close. The included screenshot is visual evidence, not a backtest result.
+
 ## Pine v6 compatibility fixes
 
 Two source-level compatibility fixes were applied to the portfolio copies after real TradingView compilation:
@@ -86,4 +98,9 @@ This repository is for education, software demonstration, and technical research
 
 ## Copyright
 
-Copyright © 2026 Alaamo7. No license is granted for redistribution, resale, or commercial use unless the owner provides written permission.
+Copyright © 2026 Alaa Hamza (Alaamo7). See [LICENSE](LICENSE); no redistribution, resale, modification, or commercial use is permitted without written permission.
+
+## More work
+
+- [Full indicators, strategies, and TradingView test archive](https://github.com/Alaamo7/pine-script-indicators)
+- [Arabic-friendly Pine Script v6 course](https://github.com/Alaamo7/pine-script-v6-course)
