@@ -29,6 +29,12 @@ A technical case study covering modular trend/momentum/liquidity engines, confir
 
 [Read the engineering case study](docs/case-studies/02-egx-smart-balance-matrix-pro.md)
 
+### Smart Correction Signals Pro
+
+A technical case study covering EMA trend context, RSI/MACD/Bollinger confirmation, confirmed swing anchors, Fibonacci correction zones, alert integration, and timing/repainting limitations.
+
+[Read the engineering case study](docs/case-studies/smart-correction-signals-pro.md)
+
 ## Portfolio
 
 ### 1. Smart EGX Liquidity S/R Dashboard
@@ -61,7 +67,7 @@ Correction-zone analysis using EMA, RSI, MACD, Bollinger Bands, confirmed pivots
 
 ![Smart Correction Signals Pro](screenshots/04-smart-correction-signals.png)
 
-[View Pine Script](indicators/04-smart-correction-signals-pro.pine)
+[View Pine Script](indicators/04-smart-correction-signals-pro.pine) · [Read Case Study](docs/case-studies/smart-correction-signals-pro.md)
 
 ### 5. EGX Pro Price Matrix
 
