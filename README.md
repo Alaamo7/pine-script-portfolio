@@ -20,10 +20,19 @@ For the larger TradingView validation project covering **120 individually tested
 
 - [Engineering case studies](docs/case-studies/README.md)
 - [Documentation index](docs/README.md)
+- [Contribution and validation workflow](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)
 - [License and usage notice](LICENSE.md)
 - [Indicators](indicators/)
 - [Screenshots](screenshots/)
+
+## Development workflow
+
+Repository changes are expected to follow an evidence-backed path:
+
+**Issue → focused change → TradingView validation when code changes → documentation/evidence update → pull request → changelog**
+
+Bug reports and documentation issues have dedicated templates, and pull requests include a validation checklist covering compile status, symbol/timeframe, screenshots, live-bar behavior, alerts, and known limitations.
 
 ## Featured case studies
 
