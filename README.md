@@ -16,7 +16,14 @@ A curated portfolio of five Pine Script v6 indicators for Egyptian Exchange (EGX
 
 For the larger TradingView validation project covering **120 individually tested scripts**, see [`pine-script-indicators`](https://github.com/Alaamo7/pine-script-indicators).
 
-**Browse all engineering case studies:** [`docs/case-studies/README.md`](docs/case-studies/README.md)
+## Repository navigation
+
+- [Engineering case studies](docs/case-studies/README.md)
+- [Documentation index](docs/README.md)
+- [Changelog](CHANGELOG.md)
+- [License and usage notice](LICENSE.md)
+- [Indicators](indicators/)
+- [Screenshots](screenshots/)
 
 ## Featured case studies
 
@@ -134,6 +141,6 @@ The underlying indicator logic was not changed.
 
 This repository is for education, software demonstration, and technical research only. It is not financial advice or a recommendation to buy or sell any security. Trading involves risk, and all decisions remain the user's responsibility.
 
-## Copyright
+## Copyright and license
 
-Copyright © 2026 Alaamo7. No license is granted for redistribution, resale, or commercial use unless the owner provides written permission.
+Copyright © 2026 Alaamo7. See [`LICENSE.md`](LICENSE.md) for the full usage terms. No redistribution, resale, sublicensing, or commercial use is granted without prior written permission.
