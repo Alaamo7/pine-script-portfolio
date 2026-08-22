@@ -34,7 +34,7 @@ Focus: EMA trend context, RSI/MACD/Bollinger confirmation, confirmed swing ancho
 
 Focus: confirmed prior-day OHLC data, daily pivot matrix levels, EMA/volume context, label state management, dashboard logic, and live-bar signal behavior.
 
-[Read case study](egx-pro-price-matrix.md)
+[Read case study](04-egx-pro-price-matrix.md)
 
 ## Validation scope
 
