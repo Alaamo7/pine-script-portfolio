@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import unquote
@@ -41,6 +43,38 @@ MARKDOWN_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 
 def fail(message: str, errors: list[str]) -> None:
     errors.append(message)
+
+
+def print_diagnostics() -> None:
+    print("Repository validation diagnostics:")
+    print(f"- ROOT: {ROOT}")
+    print(f"- CWD: {Path.cwd()}")
+    print(f"- GITHUB_SHA: {os.environ.get('GITHUB_SHA', '<unset>')}")
+    print(f"- GITHUB_REF: {os.environ.get('GITHUB_REF', '<unset>')}")
+
+    github_dir = ROOT / ".github"
+    print(f"- .github exists: {github_dir.exists()}")
+    if github_dir.exists():
+        entries = sorted(str(p.relative_to(ROOT)) for p in github_dir.rglob("*"))
+        print("- .github contents:")
+        for entry in entries:
+            print(f"  - {entry}")
+
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+        print(f"- git HEAD: {head}")
+    except Exception as exc:
+        print(f"- git HEAD lookup failed: {exc}")
+
+    target = ROOT / ".github/PULL_REQUEST_TEMPLATE.md"
+    print(f"- PR template path: {target}")
+    print(f"- PR template exists: {target.exists()}")
 
 
 def check_required_paths(errors: list[str]) -> None:
@@ -107,18 +141,20 @@ def check_markdown_links(errors: list[str]) -> None:
 
 
 def main() -> int:
+    print_diagnostics()
+
     errors: list[str] = []
     check_required_paths(errors)
     check_curated_sets(errors)
     check_markdown_links(errors)
 
     if errors:
-        print("Repository validation failed:\n")
+        print("\nRepository validation failed:\n")
         for error in errors:
             print(f"- {error}")
         return 1
 
-    print("Repository validation passed.")
+    print("\nRepository validation passed.")
     print(f"Checked {len(REQUIRED_PATHS)} required paths, 5 curated indicators, 5 screenshots, and relative Markdown links.")
     return 0
 
